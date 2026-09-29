@@ -4,15 +4,7 @@ Deal as much damage as possible to the Squid Bumper. Damage is both your score a
 
     npm install
     npm run dev
-
-Where to edit:
-- src/config.js              -> weapons + tiers, Main Weapon Up, specials, prices, timings (game content)
-- src/modules/game.js        -> game logic (state / getters / mutations / actions)
-- src/modules/users.js       -> accounts, save/load, leaderboard, admin, challenge
-- src/components/*.vue       -> screen panels
-- src/App.vue <style>        -> SplatNet 3 colors (:root variables), font, layout
-- public/img, public/fonts   -> images and the Splatoon font
-
+    
 Weapons (one equipped at a time):
 - Brush   (Inkbrush line)      : click = one hit
 - Shooter (Splattershot line)  : hold the mouse button to fire
