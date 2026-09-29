@@ -81,3 +81,76 @@ export const SPECIALS = [
 export const COST_GROWTH = 1.15 // every purchase of the same special costs 15% more
 
 export const TICK_MS = 100 // passive damage is added every 100 ms (dps / 10 each tick)
+
+// ---------------------------------------------------------------------------
+// EVENTS (like Cookie Clicker's golden cookie)
+// Every so often a pop-up appears at a random spot on screen. Click it before it
+// disappears to start its event. Only one event can run at a time.
+// ---------------------------------------------------------------------------
+export const EVENTS = {
+  spawnDelay: [60000, 180000], // random wait between two pop-ups (ms): 1 to 3 minutes
+  popupLifetime: 13000,        // how long a pop-up stays on screen (ms)
+  // Relative chance of each event when a pop-up spawns
+  chances: { bombRush: 1, rainmaker: 1, tacticooler: 1 },
+
+  // Bomb Rush: weapons are replaced by bombs. Each click throws one bomb that deals
+  // `multiplier` x the biggest single hit of the equipped weapon.
+  bombRush: {
+    name: 'Bomb Rush',
+    duration: 20000,
+    bombs: [
+      { name: 'Burst Bomb',   img: '/img/events/burst-bomb.png',   multiplier: 1.5 },
+      { name: 'Splat Bomb',   img: '/img/events/splat-bomb.png',   multiplier: 2 },
+      { name: 'Suction Bomb', img: '/img/events/suction-bomb.png', multiplier: 3 },
+    ],
+  },
+
+  // Rainmaker: replaces the Squid Bumper. Deal `hp` damage before time runs out to
+  // win `reward`. Both scale with the player's estimated damage per second:
+  //   hp = hpSeconds x DPS      reward = rewardSeconds x DPS
+  rainmaker: {
+    name: 'RAINMAKER ALERT',
+    img: '/img/events/rainmaker.png',
+    duration: 35000,
+    hpSeconds: 30,
+    rewardSeconds: 600,
+  },
+
+  // Tacticooler: weapon damage (clicks, shots, charges) multiplied by a random value.
+  // Shooters fire faster, chargers deal full damage on every click (no charging).
+  tacticooler: {
+    name: 'Tacticooler',
+    img: '/img/events/tacticooler.png',
+    duration: 15000,
+    multipliers: [
+      { value: 10,  chance: 60 },
+      { value: 100, chance: 35 },
+      { value: 333, chance: 5 },
+    ],
+    shooterFireRate: 77.912, // ms (only used if faster than the shooter's own fire rate)
+  },
+}
+
+// How long the "event is over" / Rainmaker messages stay: visible, then fading out (ms)
+export const EVENT_RESULT_TIMING = { visible: 5000, fade: 3000 }
+
+// ---------------------------------------------------------------------------
+// SOUNDS played on every hit (files in public/sounds).
+// A list = one file picked at random for each hit.
+// ---------------------------------------------------------------------------
+export const SOUNDS = {
+  shooter: [
+    '/sounds/inkHitSplash00.wav',
+    '/sounds/inkHitSplash01.wav',
+    '/sounds/inkHitSplash02.wav',
+    '/sounds/inkHitSplash03.wav',
+  ],
+  brush: '/sounds/HitEffectiveCommon02.wav',
+  chargerCharging: '/sounds/ChargeShotPosed00.wav', // plays when a charge starts
+  chargerPartial: '/sounds/ChargeLight00.wav',
+  chargerFull: '/sounds/ShotExplosionDirect00.wav',
+  bomb: '/sounds/ShotExplosionDirect00.wav',
+}
+
+// Assumed clicks per second for brushes, only used to estimate DPS (Rainmaker size)
+export const CLICKS_PER_SECOND = 8

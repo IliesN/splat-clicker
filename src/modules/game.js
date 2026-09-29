@@ -1,5 +1,6 @@
 // Game module: damage, weapons, Main Weapon Up and passive specials.
-import { WEAPONS, STARTING_WEAPON, WEAPON_UP, SPECIALS, COST_GROWTH, TICK_MS } from '../config'
+import { WEAPONS, STARTING_WEAPON, WEAPON_UP, SPECIALS, COST_GROWTH, TICK_MS, EVENTS, CLICKS_PER_SECOND, SOUNDS } from '../config'
+import { playSound } from '../sound'
 
 // ---- Plain helpers (shared by getters, mutations and actions) ----
 const weaponById = (id) => WEAPONS.find((w) => w.id === id)
@@ -33,7 +34,8 @@ export const saveData = (s) => {
 }
 
 let autoTimer = null // setInterval id for passive damage
-let fireTimer = null // setInterval id while a shooter is firing
+let fireTimer = null // setTimeout id while a shooter is firing
+let stopChargeSound = () => {} // stops the charge-up sound of the current charge
 
 export default {
   namespaced: true,
@@ -55,6 +57,29 @@ export default {
     specialCost: (s) => (i) => specialCostFor(s, i),
     weaponUpCost: (s) => weaponUpCostFor(s),
     isSpecialUnlocked: (s) => (i) => i === 0 || s.specialLevels[i - 1] > 0, // progressive purchase rule
+
+    // --- Damage helpers (they read the running event from the `events` module) ---
+    // Tacticooler multiplier, or 1 when no Tacticooler is running
+    eventMultiplier: (s, g, rootState) => (rootState.events.active?.type === 'tacticooler' ? rootState.events.active.multiplier : 1),
+    // Final damage of one hit: base x Main Weapon Up x event
+    hitDamage: (s, g) => (base) => Math.round(base * g.weaponUpMultiplier * g.eventMultiplier),
+    // Biggest single hit of the equipped weapon (base for Bomb Rush bombs)
+    maxHitDamage: (s, g) => g.currentWeapon.tier.maxDamage ?? g.currentWeapon.tier.damage,
+    // Shooter fire rate (ms), faster during Tacticooler
+    fireRate: (s, g, rootState) => {
+      const rate = g.currentWeapon.tier.fireRate
+      return rootState.events.active?.type === 'tacticooler' ? Math.min(rate, EVENTS.tacticooler.shooterFireRate) : rate
+    },
+    // Rough damage per second (weapon + passive), used to size the Rainmaker
+    estimatedDps: (s, g) => {
+      const { type, tier } = g.currentWeapon
+      const perSecond = {
+        brush: () => tier.damage * CLICKS_PER_SECOND,
+        shooter: () => tier.damage * 1000 / tier.fireRate,
+        charger: () => tier.maxDamage * 1000 / tier.chargeTime,
+      }[type]()
+      return perSecond * g.weaponUpMultiplier + g.damagePerSecond
+    },
 
     // Game statistics shown on screen
     stats: (s, g) => ({
@@ -111,37 +136,55 @@ export default {
   actions: {
     // --- Brush: one click = one hit ---
     brushHit({ commit, getters }) {
-      commit('hit', Math.round(getters.currentWeapon.tier.damage * getters.weaponUpMultiplier))
+      commit('hit', getters.hitDamage(getters.currentWeapon.tier.damage))
+      playSound(SOUNDS.brush)
+    },
+
+    // --- Bomb Rush: one click = one bomb ---
+    bombHit({ commit, getters, rootState }) {
+      commit('hit', getters.hitDamage(getters.maxHitDamage * rootState.events.active.bomb.multiplier))
+      playSound(SOUNDS.bomb)
     },
 
     // --- Shooter: hit every `fireRate` ms while the mouse button is held ---
     startFiring({ commit, getters, dispatch }) {
       dispatch('stopFiring')
-      const { damage, fireRate } = getters.currentWeapon.tier
-      const shoot = () => commit('hit', Math.round(damage * getters.weaponUpMultiplier))
+      const shoot = () => {
+        commit('hit', getters.hitDamage(getters.currentWeapon.tier.damage))
+        playSound(SOUNDS.shooter) // random splash each shot
+        fireTimer = setTimeout(shoot, getters.fireRate) // re-read every shot: Tacticooler can change it
+      }
       shoot() // first shot fires immediately
-      fireTimer = setInterval(shoot, fireRate)
     },
     stopFiring() {
-      clearInterval(fireTimer)
+      clearTimeout(fireTimer)
       fireTimer = null
     },
 
     // --- Charger: hold, then release ---
-    startCharge({ commit }) {
+    startCharge({ commit, getters, rootState }) {
+      // Tacticooler: no charge needed, every click is a full-charge shot
+      if (rootState.events.active?.type === 'tacticooler') {
+        commit('hit', getters.hitDamage(getters.currentWeapon.tier.maxDamage))
+        return playSound(SOUNDS.chargerFull)
+      }
       commit('setChargeStart', Date.now())
+      stopChargeSound = playSound(SOUNDS.chargerCharging)
     },
     releaseCharge({ state, commit, getters }) {
       if (state.chargeStartedAt === null) return
       const { maxDamage, failDamage, chargeTime } = getters.currentWeapon.tier
       const progress = Math.min((Date.now() - state.chargeStartedAt) / chargeTime, 1) // 0..1
+      stopChargeSound() // cut the charge-up sound if released early
       commit('setChargeStart', null)
       const base = progress >= 1
         ? maxDamage                                                  // full charge
         : failDamage[0] + (failDamage[1] - failDamage[0]) * progress // partial charge
-      commit('hit', Math.round(base * getters.weaponUpMultiplier))
+      commit('hit', getters.hitDamage(base))
+      playSound(progress >= 1 ? SOUNDS.chargerFull : SOUNDS.chargerPartial)
     },
     cancelCharge({ commit }) {
+      stopChargeSound()
       commit('setChargeStart', null)
     },
 
@@ -163,10 +206,11 @@ export default {
     buyWeaponTier({ commit }, id) {
       commit('buyWeaponTier', id) // tiers are always bought in order (next tier only)
     },
-    equipWeapon({ state, commit, dispatch }, id) {
+    equipWeapon({ state, commit, dispatch, rootState }, id) {
       if (state.weaponTiers[id] < 0) return // not unlocked
+      if (rootState.events.active?.type === 'bombRush') return // weapons are locked during Bomb Rush
       dispatch('stopFiring')
-      commit('setChargeStart', null)
+      dispatch('cancelCharge')
       commit('equipWeapon', id)
     },
   },

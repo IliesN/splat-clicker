@@ -6,14 +6,26 @@
        BOTTOM  = scrolling news ticker
      Add new panels inside the matching <div class="col-..."> below. -->
 <script setup>
+import { watch } from 'vue'
+import { useStore } from 'vuex'
 import { GAME_TITLE } from './config'
 import { fmt } from './format'
+import { setCursorImage } from './cursor'
 import AuthPanel from './components/AuthPanel.vue'
 import BumperPanel from './components/BumperPanel.vue'
 import WeaponsPanel from './components/WeaponsPanel.vue'
 import SpecialsPanel from './components/SpecialsPanel.vue'
 import LeaderboardPanel from './components/LeaderboardPanel.vue'
 import AdminPanel from './components/AdminPanel.vue'
+import EventPopup from './components/EventPopup.vue'
+
+// Mouse cursor = equipped weapon (or bomb during Bomb Rush) while logged in
+const store = useStore()
+watch(
+  () => (store.getters['users/isLoggedIn'] ? store.getters['events/cursorImg'] : null),
+  (img) => setCursorImage(img),
+  { immediate: true },
+)
 </script>
 
 <template>
@@ -49,6 +61,9 @@ import AdminPanel from './components/AdminPanel.vue'
         <SpecialsPanel />
       </div>
     </div>
+
+    <!-- Random event pop-up (Bomb Rush / Rainmaker / Tacticooler) -->
+    <EventPopup v-if="$store.getters['users/isLoggedIn']" />
   </main>
 
   <!-- Bottom news ticker (edit the text freely) -->
@@ -102,6 +117,7 @@ body {
   color: var(--text);
   font-family: 'Splatoon2', system-ui, sans-serif;
   letter-spacing: 0.02em;
+  cursor: var(--cursor, auto); /* weapon cursor, set by src/cursor.js */
   padding-bottom: 48px; /* room for the ticker */
 }
 h1, h2, h3 { font-weight: normal; margin: 0 0 10px; }
@@ -115,7 +131,7 @@ button {
   border: none;
   border-radius: 999px;
   padding: 6px 16px;
-  cursor: pointer;
+  cursor: var(--cursor, pointer);
 }
 button:hover:not(:disabled) { filter: brightness(1.1); }
 button:disabled { background: var(--tile-gray); color: var(--muted); cursor: not-allowed; }

@@ -3,7 +3,8 @@
 import { createStore } from 'vuex'
 import game from './modules/game'
 import users from './modules/users'
+import events from './modules/events'
 
 export default createStore({
-  modules: { game, users }, // both are namespaced: 'game/...' and 'users/...'
+  modules: { game, users, events }, // all namespaced: 'game/...', 'users/...', 'events/...'
 })

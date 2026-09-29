@@ -35,11 +35,11 @@ const describe = (type, t) => {
         </div>
 
         <div class="weapon-buttons">
-          <!-- Equip (only one weapon at a time) -->
+          <!-- Equip (only one weapon at a time, locked during Bomb Rush) -->
           <button
             v-if="$store.getters['game/ownedTier'](w.id)"
             class="secondary"
-            :disabled="$store.state.game.equipped === w.id"
+            :disabled="$store.state.game.equipped === w.id || $store.getters['events/activeType'] === 'bombRush'"
             @click="$store.dispatch('game/equipWeapon', w.id)"
           >{{ $store.state.game.equipped === w.id ? 'Equipped' : 'Equip' }}</button>
 

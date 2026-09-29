@@ -1,6 +1,8 @@
 // Users module: accounts, roles, save/load, leaderboard, admin tools, challenge.
 import { ROLES } from '../config'
 import { freshState, saveData } from './game'
+import { SOUNDS } from '../config'
+import { preloadSounds } from '../sound'
 
 // ---- Fake server (localStorage). Replace with real API calls later. ----
 const KEY = 'splatClickerAccounts'
@@ -58,11 +60,14 @@ export default {
       commit('setMessage', '')
       commit('game/loadGame', a.save, { root: true })
       dispatch('game/startAutoProduction', null, { root: true })
+      dispatch('events/startEvents', null, { root: true })
+      preloadSounds(Object.values(SOUNDS))
     },
 
     logout({ commit, dispatch }) {
       dispatch('saveGame')
       dispatch('game/stopAutoProduction', null, { root: true })
+      dispatch('events/stopEvents', null, { root: true })
       commit('game/resetGame', null, { root: true })
       commit('setSession', { username: null, role: null })
       commit('setChallenge', null)

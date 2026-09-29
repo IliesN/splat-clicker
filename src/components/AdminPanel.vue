@@ -1,6 +1,7 @@
 <!-- Admin only: edit a player's score, reset one player, reset everyone -->
 <script setup>
 import { ref } from 'vue'
+import { EVENTS } from '../config'
 const target = ref('')
 const score = ref(0)
 </script>
@@ -18,10 +19,19 @@ const score = ref(0)
       <button :disabled="!target" class="secondary" @click="$store.dispatch('users/adminReset', target)">Reset selected</button>
       <button class="secondary" @click="$store.dispatch('users/adminReset', null)">Reset all</button>
     </div>
+
+    <!-- Testing: make an event pop-up appear right now -->
+    <small>Spawn an event pop-up:</small>
+    <div class="row">
+      <button v-for="(chance, type) in EVENTS.chances" :key="type" class="secondary" @click="$store.dispatch('events/spawnPopup', type)">
+        {{ EVENTS[type].name }}
+      </button>
+    </div>
   </section>
 </template>
 
 <style>
 .admin { display: flex; flex-direction: column; gap: 10px; }
 .admin .row { display: flex; gap: 8px; flex-wrap: wrap; }
+.admin small { color: var(--muted); }
 </style>
